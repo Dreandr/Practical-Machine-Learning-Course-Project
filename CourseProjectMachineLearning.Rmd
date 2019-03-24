@@ -1,0 +1,99 @@
+---
+title: 'Course Project: practical machine Learning'
+author: "Denis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Summary
+
+In this study, we will use the R caret package to build a model classifying the execution of physical excercises based on the readings from wearable fitness trackers. Then, w will use this model to classify the data provided in the test set for the Coursera Practical Machine Learning course. The model is based on the Weight Lifting Exercise Dataset collected by Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W. & Fuks, H. for their Qualitative Activity Recognition of Weight Lifting Exercises paper.
+
+### Step 0: Loading the data
+
+First, we download the data and read it into R. The code for this section can be found in the Appendix (Ap. 1).
+
+### Step 1: Exploring & Cleaning the data
+
+As we can see, unfortunately, the data sets that we deal with have a very high number of NAs. It is especially noteworthy that as far as the testing set is concerned, multiple columns have nothing but NAs in them. Since the testing set is what we ultimately seek to classify, we remove these columns both from the training and test sets to make sure our model does not get confused by the missing values. We will also remove the first two columns, which stand for row number and participant's name, respectively, as they are unlikely to be of any practical value. The code for this section is available in Appendix (Ap. 2)
+
+### Step 3: Training the Model
+
+Finally, we train our model, using the R caret package. Due to the computational limits (this work is done in a tablet with very limited RAM) we will split the training set into 2, one used to train the model, the other - to test its accuracy. We use the Random Forest method as highly efficient in dealing with classification tasks, using all variables, with a 5-fold cross validation, then test it on the testing set to see whether it needs any adjustment - which, as we will see, it does not. The code for this section is available in Appendix (Ap. 3); again, in the interest of time and computational reources, we will not train a new model for this HTML/Rmd document, but pre-load the existing one. 
+
+### Step 4: Classifying the Test Set
+
+Finally, we use the trained model to classify the test set. The preidct function gives us the result B A B A A E D B A A B C B A E E A B B B, which is qualified as 100% correct by the automated quiz on the Coursera page of the course. The code for this section is available in Appendix (Ap. 4).
+
+### Appendix
+
+#### Ap. 1 - Loading and reading the data
+```{r load data}
+csvUrl1 <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+csvFile1 <- "pml-training.csv"
+
+csvUrl2 <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+csvFile2 <- "pml-testing.csv"
+
+if (!file.exists(csvFile1)) {
+  download.file(csvUrl1, destfile = csvFile1)
+}
+if (!file.exists(csvFile2)) {
+  download.file(csvUrl2, destfile = csvFile2)
+}
+training <- read.csv(csvFile1)
+testing <- read.csv(csvFile2)
+training <- training[,-c(1,2)]
+testing <- testing[, -c(1,2)]
+```
+
+#### Ap. 2 - Exploring & Cleaning Data
+
+Finding missing values
+```{r NAs, echo=T}
+sum(is.na(training))
+sum(is.na(testing))
+str(testing)
+```
+
+Removing variables 
+```{r cleanup, echo = T}
+naCols  <- vector()
+for (i in 1:length(names(testing))){
+  if (sum(is.na(testing[,i]))> 0){
+    naCols <<- c(naCols, i)
+  }
+}
+testing <- testing[,-naCols]
+training <- training[,-naCols]
+```
+
+#### Ap. 3 - Fitting the Model
+
+Preparing test and training sets
+```{r model}
+library(caret)
+inTrain <- createDataPartition(y = training$classe, p = 0.5, list = F)
+training1 <- training[inTrain,]
+testing1 <- training[-inTrain,]
+```
+
+Training the model
+```{r train, eval = FALSE}
+train_control <- trainControl(method="cv", number=5)
+FinalModel <- train(classe ~ ., data = training1, method = "rf", trControl = train_control)
+```
+
+Confusion Matrix
+```{r confusion}
+load("FinalModel.Rda")
+confusionMatrix(testing1$classe, predict(FinalModel, testing1[, -58]))
+```
+
+#### Ap. 4 - Classifying Test Set
+```{r classify}
+predict(FinalModel, testing)
+```
